@@ -18,24 +18,24 @@ type sseClient struct {
 
 // https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events
 type sseMessage struct {
-	Data  []byte
-	ID    string
-	Event string
-	Retry time.Duration
+	Data  string        `json:"data"`
+	ID    string        `json:"id"`
+	Event string        `json:"event"`
+	Retry time.Duration `json:"retry"`
 }
 
 func (msg sseMessage) ToString() string {
-	ret := fmt.Sprintf("data: %s\n\n", msg.Data)
+	ret := ""
 	if msg.ID != "" {
-		ret += fmt.Sprintf("id: %s\n\n", msg.ID)
+		ret += fmt.Sprintf("id: %s\n", msg.ID)
 	}
 	if msg.Event != "" {
-		ret += fmt.Sprintf("event: %s\n\n", msg.Event)
+		ret += fmt.Sprintf("event: %s\n", msg.Event)
 	}
 	if msg.Retry != 0 {
-		ret += fmt.Sprintf("retry: %d\n\n", msg.Retry)
+		ret += fmt.Sprintf("retry: %d\n", msg.Retry)
 	}
-	sseLogger.Println("sse message", ret)
+	ret += fmt.Sprintf("data: %s\n", msg.Data)
 	return ret + "\n"
 }
 
@@ -47,8 +47,8 @@ func heartBeat() {
 	defer ticker.Stop()
 	for range ticker.C {
 		SendSSE(sseMessage{
-			Data:  []byte("ping"),
-			Event: "heartbeat",
+			Data:  "ping",
+			Event: "sse_heartbeat",
 		})
 	}
 }
@@ -56,9 +56,9 @@ func heartBeat() {
 /* SendSSE sends a message to all connected clients
  */
 func SendSSE(sseMsg sseMessage) {
+	buf := sseMsg.ToString()
 	for _, client := range sseClients {
-		sseLogger.Println("sending message to client", client.r.RemoteAddr, sseMsg.ToString())
-		_, err := fmt.Fprint(client.w, sseMsg.ToString())
+		_, err := fmt.Fprint(client.w, buf)
 		if err != nil {
 			return
 		}

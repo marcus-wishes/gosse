@@ -18,7 +18,7 @@ var retryDuration = time.Second * 5
 
 func processRequests() {
 	for req := range incomingRequests {
-		whLogger.Println("start sending message to clients")
+		whLogger.Printf("sending message of type %s", req.Event)
 		SendSSE(req)
 	}
 	whLogger.Println("incoming requests channel closed")
@@ -26,36 +26,39 @@ func processRequests() {
 
 func WebHookServer() {
 
-	for _, config := range config.WebHook {
-		http.HandleFunc(config.Path, func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != config.Method {
-				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-				return
+	whLogger.Printf("listener is running on :%s\n", config.WebHookPort)
+
+	for _, cfg := range config.WebHook {
+		handleFunc := func(config WebHookIncomingConfig) func(w http.ResponseWriter, r *http.Request) {
+			return func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != config.Method {
+					http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+					return
+				}
+
+				messageData, err := io.ReadAll(r.Body)
+				if err != nil {
+					http.Error(w, "Bad Request", http.StatusBadRequest)
+					return
+				}
+
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("OK"))
+
+				event := config.Path
+				if event[0] == '/' {
+					event = event[1:]
+				}
+
+				incomingRequests <- sseMessage{Event: event, Data: string(messageData), Retry: retryDuration, ID: time.Now().String()}
 			}
-
-			messageData, err := io.ReadAll(r.Body)
-			if err != nil {
-				http.Error(w, "Bad Request", http.StatusBadRequest)
-				return
-			}
-
-			if len(messageData) == 0 {
-				http.Error(w, "Bad Request", http.StatusBadRequest)
-				return
-			}
-
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("OK"))
-			whLogger.Printf("received message: %s\n", messageData)
-
-			incomingRequests <- sseMessage{Event: config.Path, Data: messageData, Retry: retryDuration, ID: time.Now().String()}
-		})
-		whLogger.Printf("path: %s\n", config.Path)
+		}
+		http.HandleFunc(cfg.Path, handleFunc(cfg))
+		whLogger.Printf("path: %s\n", cfg.Path)
 	}
 
 	go processRequests()
 
-	whLogger.Printf("listener is running on :%s\n", config.WebHookPort)
 	if err := http.ListenAndServe(":"+config.WebHookPort, nil); err != nil {
 		fmt.Println(err.Error())
 		close(incomingRequests)

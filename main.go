@@ -3,7 +3,17 @@ package main
 var testWebHookConfig = []WebHookIncomingConfig{
 	{
 		Method: "POST",
-		Path:   "/webhook",
+		Path:   "/ticket_created",
+	},
+
+	{
+		Method: "POST",
+		Path:   "/ticket_updated",
+	},
+
+	{
+		Method: "POST",
+		Path:   "/ticket_deleted",
 	},
 }
 
