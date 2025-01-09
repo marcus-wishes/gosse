@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+    <body>
+        <ul id="list"></ul>
+    </body>
+
+    <script type="text/javascript">
+		const server = "http://127.0.0.1:5001/events"
+		console.log("connecting to " + server)
+        const eventSrc = new EventSource(server);
+
+        const list = document.getElementById("list");
+
+        eventSrc.onmessage = (event) => {
+			console.log("EventSource message:", event);
+            const li = document.createElement("li");
+            li.textContent = `message: ${event.data}`;
+            list.appendChild(li);
+        };
+
+		eventSrc.onerror = (event) => {
+            console.error("EventSource failed:", event);
+			console.error("ReadyState:", eventSrc.readyState);
+        };
+
+		eventSrc.onopen = (event) => {
+			console.log("EventSource opened:", event);
+			console.log("ReadyState:", eventSrc.readyState);
+		};
+
+		eventSrc.onclose = (event) => {
+			console.log("EventSource closed:", event);
+			console.log("ReadyState:", eventSrc.readyState);
+		};
+    </script>
+</html>
