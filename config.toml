@@ -1,0 +1,9 @@
+[WebHooks]
+Method = "PUT"
+Port = 6000
+Paths = ["ticket_created", "ticket_updated", "ticket_deleted"]
+
+[SSEClient]
+Path = "/events"
+Method = "GET"
+Port = 5001

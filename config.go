@@ -2,8 +2,11 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"strings"
+
+	"github.com/BurntSushi/toml"
 )
 
 type WebHookConfig struct {
@@ -46,7 +49,27 @@ type Config struct {
 	SSEClient SSEClientConnectConfig
 }
 
-func paseSSEClientConfig(args []string) SSEClientConnectConfig {
+var helpMessage = `
+Usage: 
+gosse -config <path-to-config-toml-file> OR
+gosse <flags>
+
+Flags:
+  -method string
+    	Method for the webhook server (default "POST")
+  -port int
+    	Port for the webhook server (default 5000)
+  -paths string
+    	Paths for the webhook server (default "ticket_created,ticket_updated,ticket_deleted")
+  -sse-path string
+    	Path for the SSE client (default "/events")
+  -sse-method string
+    	Method for the SSE client (default "GET")
+  -sse-port int
+    	Port for the SSE client (default 5001)
+`
+
+func parseSSEClientConfig(args []string) SSEClientConnectConfig {
 	flagSet := flag.NewFlagSet("sse-client", flag.ExitOnError)
 
 	path := flagSet.String("sse-path", "/events", "Path for the SSE client")
@@ -84,14 +107,39 @@ func parseWebhookConfig(args []string) (WebHookConfig, []string) {
 var config Config
 
 func ParseConfigFromCommandLine() {
+	if len(os.Args) == 2 {
+		if (os.Args[1] == "-h") || (os.Args[1] == "--help") {
+			fmt.Println(
+				helpMessage,
+			)
+			os.Exit(0)
+		}
+		configFile := flag.String("config", "", "Path to the config.toml file")
+		flag.Parse()
 
-	args := os.Args[1:]
-	webhookConfig, args := parseWebhookConfig(args)
-	sseClientConfig := paseSSEClientConfig(args)
+		var err error
+		config, err = parseConfigFromToml(*configFile)
+		if err != nil {
+			fmt.Println("Failed to parse config file:", err)
+			os.Exit(1)
+		}
+	} else {
 
-	config = Config{
-		WebHooks:  webhookConfig,
-		SSEClient: sseClientConfig,
+		args := os.Args[1:]
+		webhookConfig, args := parseWebhookConfig(args)
+		sseClientConfig := parseSSEClientConfig(args)
+
+		config = Config{
+			WebHooks:  webhookConfig,
+			SSEClient: sseClientConfig,
+		}
 	}
+}
 
+func parseConfigFromToml(filePath string) (Config, error) {
+	var config Config
+	if _, err := toml.DecodeFile(filePath, &config); err != nil {
+		return Config{}, err
+	}
+	return config, nil
 }
