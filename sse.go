@@ -106,8 +106,8 @@ func SEEClientServer() {
 
 	http.HandleFunc(config.SSEClient.Path, sseHandler)
 
-	sseLogger.Printf("client server is running on :%s%s using %s\n", config.SSEClient.Port, config.SSEClient.Path, config.SSEClient.Method)
-	if err := http.ListenAndServe(":"+config.SSEClient.Port, nil); err != nil {
+	sseLogger.Printf("client server is running on :%d%s using %s\n", config.SSEClient.Port, config.SSEClient.Path, config.SSEClient.Method)
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", config.SSEClient.Port), nil); err != nil {
 		sseLogger.Println(err.Error())
 	}
 }
